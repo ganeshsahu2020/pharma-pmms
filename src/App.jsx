@@ -1,24 +1,45 @@
-- Ensure `App.jsx` imports `App.css` if needed:
-```powershell
-$appJsx = @"
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import PasswordReset from './components/PasswordReset';
-import './App.css';
+
+// Components
+import Login from './components/Login';
+import Signup from './components/Signup';
+import Dashboard from './components/Dashboard';
+import LandingPage from './components/LandingPage';
+import PasswordReset from './components/PasswordManagement';
+import PrivateRoute from './components/PrivateRoute';
+import Logout from './components/Logout';
+import UserManagement from './components/UserManagement';
+import AutoLoginEmulator from './components/AutoLoginEmulator';
+import EmulatorBanner from './components/EmulatorBanner'; // ✅ Emulator visual indicator
 
 function App() {
+  const isLocalhost = window.location.hostname === 'localhost';
+
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
+        {isLocalhost && <AutoLoginEmulator />}        {/* 🔐 Auto-login for Emulator */}
+        {isLocalhost && <EmulatorBanner />}           {/* ⚠️ Visual Emulator warning */}
+
         <Routes>
-          <Route path="/reset-password" element={<PasswordReset />} />
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/password-reset" element={<PasswordReset />} />
+
+          {/* Private Routes */}
+          <Route path="/" element={<PrivateRoute><LandingPage /></PrivateRoute>} />
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/user-management" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
+          <Route path="/logout" element={<PrivateRoute><Logout /></PrivateRoute>} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 
 export default App;
-"@
-Set-Content -Path C:\Users\rxgibsmt\PharmaPMMS\pharmapmms-ui\src\App.jsx -Value $appJsx -Force

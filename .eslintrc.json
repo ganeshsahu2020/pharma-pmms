@@ -1,0 +1,25 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "extends": [
+    "react-app",
+    "react-app/jest"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 12,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "rules": {
+    "semi": ["warn", "always"],
+    "no-extra-semi": "warn",
+    "react/jsx-uses-react": "off",
+    "react/react-in-jsx-scope": "off",
+    "no-undef": "error"
+  }
+}
