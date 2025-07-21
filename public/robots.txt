@@ -1,4 +1,0 @@
-User-agent: *
-Disallow: /user-management
-Disallow: /seed-users
-Disallow: /add-users

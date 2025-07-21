@@ -1,40 +1,60 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 
-// Components
+// ✅ Public Pages
 import Login from './components/Login';
 import Signup from './components/Signup';
-import Dashboard from './components/Dashboard';
+import PasswordReset from './components/PasswordReset';
+import PasswordRedirect from './components/PasswordRedirect'; // Supabase email callback
+
+// ✅ Protected Pages
 import LandingPage from './components/LandingPage';
-import PasswordReset from './components/PasswordManagement';
-import PrivateRoute from './components/PrivateRoute';
+import Dashboard from './components/Dashboard';
 import Logout from './components/Logout';
-import UserManagement from './components/UserManagement';
-import AutoLoginEmulator from './components/AutoLoginEmulator';
-import EmulatorBanner from './components/EmulatorBanner'; // ✅ Emulator visual indicator
+import PrivateRoute from './components/PrivateRoute';
+
+// ✅ Styles
+import './App.css'; // Tailwind CSS & global styles
 
 function App() {
-  const isLocalhost = window.location.hostname === 'localhost';
-
   return (
     <Router>
       <AuthProvider>
-        {isLocalhost && <AutoLoginEmulator />}        {/* 🔐 Auto-login for Emulator */}
-        {isLocalhost && <EmulatorBanner />}           {/* ⚠️ Visual Emulator warning */}
-
         <Routes>
-          {/* Public Routes */}
+          {/* 🌐 Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/password-reset" element={<PasswordReset />} />
+          <Route path="/reset" element={<PasswordRedirect />} />
 
-          {/* Private Routes */}
-          <Route path="/" element={<PrivateRoute><LandingPage /></PrivateRoute>} />
-          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/user-management" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
-          <Route path="/logout" element={<PrivateRoute><Logout /></PrivateRoute>} />
+          {/* 🔒 Protected Routes */}
+          <Route
+            path="/landingpage"
+            element={
+              <PrivateRoute>
+                <LandingPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/logout"
+            element={
+              <PrivateRoute>
+                <Logout />
+              </PrivateRoute>
+            }
+          />
 
-          {/* Fallback */}
+          {/* 🧭 Fallback Routes */}
+          <Route path="/" element={<Navigate to="/landingpage" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>
