@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../utils/supabaseClient';
 
 const AuthContext = createContext();
 
@@ -7,30 +7,46 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize session on mount
   useEffect(() => {
-    const loadUserSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: { user } } = await supabase.auth.getUser();
-        setCurrentUser(user);
+    const initializeUser = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('⚠️ Error fetching session:', sessionError.message);
+        }
+
+        if (session?.user) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (userError) {
+            console.warn('⚠️ Error fetching user:', userError.message);
+          } else {
+            setCurrentUser(user);
+          }
+        }
+      } catch (err) {
+        console.error('🚨 Unexpected session init error:', err.message);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    loadUserSession();
+    initializeUser();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const { data: { user } } = await supabase.auth.getUser();
-        setCurrentUser(user);
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn('⚠️ Auth state change: failed to fetch user:', error.message);
+        } else {
+          setCurrentUser(user);
+        }
       } else {
         setCurrentUser(null);
       }
     });
 
     return () => {
-      authListener.subscription?.unsubscribe();
+      subscription?.subscription?.unsubscribe?.();
     };
   }, []);
 

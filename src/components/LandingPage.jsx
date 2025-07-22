@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 
 // 🧩 Submodule Components
@@ -7,34 +7,27 @@ import UserManagement from './UserManagement';
 import RoleManagement from './RoleManagement';
 import PasswordManagement from './PasswordManagement';
 
-const LandingPage = () => {
+export default function LandingPage() {
   const [modules, setModules] = useState([]);
   const [expandedModule, setExpandedModule] = useState(null);
   const [selectedSubmodule, setSelectedSubmodule] = useState(null);
   const [user, setUser] = useState(null);
 
-  // 🔁 Load modules + user on mount
   useEffect(() => {
     fetchModules();
-    fetchUserSession();
+    fetchUser();
   }, []);
 
   const fetchModules = async () => {
     const { data, error } = await supabase.from('modules').select('*');
-    if (error) {
-      console.error('❌ Error fetching modules:', error.message);
-    } else {
-      setModules(data);
-    }
+    if (error) console.error('❌ Failed to load modules:', error.message);
+    else setModules(data || []);
   };
 
-  const fetchUserSession = async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error('⚠️ Error fetching user session:', error.message);
-    } else {
-      setUser(session?.user || null);
-    }
+  const fetchUser = async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) console.error('⚠️ Failed to get user session:', error.message);
+    else setUser(data?.session?.user || null);
   };
 
   const handleLogout = async () => {
@@ -43,21 +36,25 @@ const LandingPage = () => {
     window.location.href = '/login';
   };
 
-  // 📦 Group submodules by module name
-  const groupedModules = modules.reduce((acc, item) => {
-    const moduleName = item.module;
-    if (!acc[moduleName]) acc[moduleName] = [];
-    acc[moduleName].push(item.submodule);
+  const groupedModules = modules.reduce((acc, { module, submodule }) => {
+    if (!acc[module]) acc[module] = [];
+    acc[module].push(submodule);
     return acc;
   }, {});
 
-  // 🧩 Submodule component mapper
   const submoduleComponents = {
-    'plant': <PlantMaster />,
-    'userauthorization': <UserManagement currentUserRole="Super Admin" />,
-    'rolemanagement': <RoleManagement />,
-    'passwordmanagement': <PasswordManagement />
+    plantmaster: <PlantMaster />,
+    usermanagement: <UserManagement currentUserRole="Super Admin" />,
+    rolemanagement: <RoleManagement />,
+    passwordmanagement: <PasswordManagement />
   };
+
+  useEffect(() => {
+    if (expandedModule && groupedModules[expandedModule]) {
+      const first = groupedModules[expandedModule][0];
+      setSelectedSubmodule(first);
+    }
+  }, [expandedModule]);
 
   const renderSubmodule = () => {
     const key = selectedSubmodule?.toLowerCase().replace(/\s+/g, '');
@@ -74,8 +71,10 @@ const LandingPage = () => {
         {Object.entries(groupedModules).map(([module, submodules]) => (
           <div key={module} className="mb-3">
             <h3
-              className={`font-bold text-blue-600 cursor-pointer ${expandedModule === module ? 'underline' : ''}`}
-              onClick={() => setExpandedModule(prev => (prev === module ? null : module))}
+              className={`font-bold text-blue-600 cursor-pointer ${
+                expandedModule === module ? 'underline' : ''
+              }`}
+              onClick={() => setExpandedModule(expandedModule === module ? null : module)}
             >
               {module}
             </h3>
@@ -84,7 +83,9 @@ const LandingPage = () => {
                 {submodules.map((sub, idx) => (
                   <div
                     key={idx}
-                    className={`ml-4 text-sm cursor-pointer hover:text-blue-700 ${selectedSubmodule === sub ? 'font-medium text-blue-800' : 'text-gray-700'}`}
+                    className={`ml-4 text-sm cursor-pointer hover:text-blue-700 ${
+                      selectedSubmodule === sub ? 'font-medium text-blue-800' : 'text-gray-700'
+                    }`}
                     onClick={() => setSelectedSubmodule(sub)}
                   >
                     • {sub}
@@ -96,29 +97,30 @@ const LandingPage = () => {
         ))}
       </aside>
 
-      {/* 🧱 Main Panel */}
+      {/* 🧱 Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* 🔐 Top Bar */}
-        <header className="flex justify-between items-center bg-white shadow px-6 py-3 border-b">
-          <img src="/logo192.png" alt="Logo" className="h-8" />
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-700">{user?.email}</span>
+        {/* 🔐 Top Bar with Centered Logo */}
+        <header className="flex items-center justify-between bg-white shadow px-6 py-3 border-b">
+          <div className="w-40" />
+          <div className="text-2xl font-extrabold text-blue-600 animate-logo-fade">
+            DigitizerX
+          </div>
+          <div className="flex items-center gap-4 w-40 justify-end">
+            <span className="text-sm text-gray-700 truncate">
+              {user?.email || '🔒 Unknown User'}
+            </span>
             <button
               onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600"
+              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
             >
               Logout
             </button>
           </div>
         </header>
 
-        {/* 🖥️ Submodule Area */}
-        <main className="p-6 overflow-y-auto">
-          {renderSubmodule()}
-        </main>
+        {/* 🧩 Render Submodule */}
+        <main className="p-6 overflow-y-auto">{renderSubmodule()}</main>
       </div>
     </div>
   );
-};
-
-export default LandingPage;
+}

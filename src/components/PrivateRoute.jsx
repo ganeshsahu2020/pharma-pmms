@@ -1,33 +1,36 @@
+// src/components/PrivateRoute.jsx
 import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function PrivateRoute({ children }) {
+const PrivateRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
 
+  // 💤 Auto logout after 10 minutes of inactivity
   useEffect(() => {
     let timeoutId;
 
-    const resetInactivityTimer = () => {
+    const resetTimer = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
+        console.warn('🔒 Session expired due to inactivity.');
         localStorage.removeItem('rememberEmail');
-        window.location.href = '/logout'; // 👋 Auto logout after 10 min
-      }, 10 * 60 * 1000); // 10 minutes
+        window.location.href = '/logout'; // Full reload to trigger Supabase signOut
+      }, 10 * 60 * 1000);
     };
 
-    window.addEventListener('mousemove', resetInactivityTimer);
-    window.addEventListener('keydown', resetInactivityTimer);
-
-    resetInactivityTimer(); // 🔁 Start on mount
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keydown', resetTimer);
+    resetTimer();
 
     return () => {
       clearTimeout(timeoutId);
-      window.removeEventListener('mousemove', resetInactivityTimer);
-      window.removeEventListener('keydown', resetInactivityTimer);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
     };
   }, []);
 
+  // 🛑 Still loading session state from Supabase
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen text-gray-600 text-lg">
@@ -36,5 +39,14 @@ export default function PrivateRoute({ children }) {
     );
   }
 
-  return currentUser ? children : <Navigate to="/login" replace />;
-}
+  // ❌ No user authenticated
+  if (!currentUser) {
+    console.warn('🚫 Unauthorized. Redirecting to /login.');
+    return <Navigate to="/login" replace />;
+  }
+
+  // ✅ Authenticated, allow access
+  return children;
+};
+
+export default PrivateRoute;

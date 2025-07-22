@@ -1,44 +1,36 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
-const PasswordRedirect = () => {
+export default function PasswordRedirect() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleRedirect = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const access_token = hashParams.get('access_token');
-      const refresh_token = hashParams.get('refresh_token');
-      const type = hashParams.get('type');
+    const handleRecovery = async () => {
+      try {
+        // Supabase already stores session via fragment token
+        const { data, error } = await supabase.auth.getSession();
 
-      if (type === 'recovery' && access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token
-        });
-
-        if (error) {
-          console.error('Session error:', error.message);
-          alert('❌ Session error. Please login again.');
+        if (error || !data.session) {
+          console.error('❌ Session recovery failed:', error?.message);
+          alert('Invalid or expired reset link. Please request again.');
           navigate('/login');
         } else {
-          navigate('/password-management'); // ✅ Your app's internal password update page
+          console.log('🔑 Recovery session active');
+          navigate('/password-management');
         }
-      } else {
-        alert('❌ Invalid or expired reset link.');
+      } catch (err) {
+        console.error('🚨 Unexpected error:', err.message);
         navigate('/login');
       }
     };
 
-    handleRedirect();
+    handleRecovery();
   }, [navigate]);
 
   return (
-    <div className="flex justify-center items-center min-h-screen text-gray-700">
-      🔄 Validating your reset link...
+    <div className="min-h-screen flex items-center justify-center text-lg text-gray-600">
+      🔄 Validating reset link...
     </div>
   );
-};
-
-export default PasswordRedirect;
+}

@@ -1,121 +1,133 @@
-﻿import { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
-export default function PasswordManagement({ currentUser }) {
-  const [oldPassword, setOldPassword] = useState('');
+export default function PasswordManagement({ currentUser = null }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
   const navigate = useNavigate();
 
+  // 🧠 Extract email (either from prop or Supabase)
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (currentUser?.email) {
+        setEmail(currentUser.email);
+      } else {
+        const { data, error } = await supabase.auth.getUser();
+        if (data?.user?.email) setEmail(data.user.email);
+      }
+    };
+
+    fetchUser();
+  }, [currentUser]);
+
+  // 🔐 Handle password update
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setMessage('');
     setError('');
 
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match');
+      return setError('❌ Passwords do not match.');
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (updateError) {
+      setError(`❌ ${updateError.message}`);
       return;
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (updateError) {
-      setError(updateError.message);
-    } else {
+    if (email) {
       await supabase
         .from('user_management')
         .update({
           force_reset_password: false,
-          password_updated_at: new Date().toISOString(),
+          password_updated_at: new Date().toISOString()
         })
-        .eq('email', currentUser?.email);
-
-      setMessage('Password updated successfully. Redirecting to dashboard...');
-      setTimeout(() => navigate('/landingpage'), 1500);
-
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+        .eq('email', email);
     }
+
+    setMessage('✅ Password updated successfully. Redirecting to login...');
+    setTimeout(async () => {
+      await supabase.auth.signOut();
+      navigate('/login');
+    }, 2000);
   };
 
-  // ⏳ Idle timeout logout after 10 mins
+  // ⏳ Inactivity logout only for authenticated users
   useEffect(() => {
+    if (!currentUser) return;
+
     let timeout;
-    const handleIdle = () => {
+    const resetTimer = () => {
       clearTimeout(timeout);
       timeout = setTimeout(async () => {
-        alert('🔒 Session expired due to inactivity. Please login again.');
+        alert('🔒 Session expired. Please log in again.');
         await supabase.auth.signOut();
         navigate('/login');
       }, 10 * 60 * 1000);
     };
 
-    window.addEventListener('mousemove', handleIdle);
-    window.addEventListener('keydown', handleIdle);
-    handleIdle();
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keydown', resetTimer);
+    resetTimer();
 
     return () => {
-      window.removeEventListener('mousemove', handleIdle);
-      window.removeEventListener('keydown', handleIdle);
       clearTimeout(timeout);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
     };
-  }, [navigate]);
+  }, [currentUser, navigate]);
 
-  // 🔁 Check password age and alert
+  // ⏱️ Password expiry warning logic (only for known email)
   useEffect(() => {
-    const checkPasswordAge = async () => {
-      if (!currentUser?.email) return;
+    if (!email) return;
 
-      const { data, error } = await supabase
+    const checkExpiration = async () => {
+      const { data } = await supabase
         .from('user_management')
         .select('password_updated_at')
-        .eq('email', currentUser.email)
+        .eq('email', email)
         .single();
 
       if (data?.password_updated_at) {
-        const updatedDate = new Date(data.password_updated_at);
+        const updated = new Date(data.password_updated_at);
         const now = new Date();
-        const diffDays = Math.floor((now - updatedDate) / (1000 * 60 * 60 * 24));
-        const remaining = 90 - diffDays;
-        if (remaining <= 0) {
-          alert('🔒 Your password has expired. You will be logged out.');
+        const daysElapsed = Math.floor((now - updated) / (1000 * 60 * 60 * 24));
+        const daysLeft = 90 - daysElapsed;
+
+        if (daysLeft <= 0) {
+          alert('🔒 Password expired. Logging out.');
           await supabase.auth.signOut();
           navigate('/login');
-        } else if (remaining <= 15) {
-          alert(`⚠️ Your password will expire in ${remaining} day(s). Please update it soon.`);
+        } else if (daysLeft <= 15) {
+          alert(`⚠️ Your password expires in ${daysLeft} day(s).`);
         }
       }
     };
 
-    checkPasswordAge();
-  }, [currentUser, navigate]);
+    checkExpiration();
+  }, [email, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form onSubmit={handleChangePassword} className="bg-white p-6 rounded shadow-md w-96">
-        <h2 className="text-xl font-bold mb-4">Change Password</h2>
+      <form
+        onSubmit={handleChangePassword}
+        className="bg-white p-6 rounded shadow-md w-full max-w-md"
+      >
+        <h2 className="text-xl font-bold mb-4 text-center">🔐 Change Password</h2>
 
-        {error && <p className="text-red-500 mb-2">{error}</p>}
-        {message && <p className="text-green-500 mb-2">{message}</p>}
+        {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
+        {message && <p className="text-green-600 text-sm mb-2">{message}</p>}
 
-        <input
-          type="password"
-          placeholder="Old Password"
-          className="w-full border px-3 py-2 rounded mb-2"
-          value={oldPassword}
-          onChange={(e) => setOldPassword(e.target.value)}
-          required
-        />
         <input
           type="password"
           placeholder="New Password"
-          className="w-full border px-3 py-2 rounded mb-2"
+          className="w-full border px-3 py-2 rounded mb-3"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           required
@@ -131,10 +143,14 @@ export default function PasswordManagement({ currentUser }) {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
         >
           Update Password
         </button>
+
+        <p className="mt-4 text-sm text-center">
+          <a href="/login" className="text-blue-600 underline">Back to Login</a>
+        </p>
       </form>
     </div>
   );

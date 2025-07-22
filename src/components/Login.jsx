@@ -1,18 +1,41 @@
-﻿import { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
 const Login = () => {
-  const [email, setEmail] = useState(localStorage.getItem('rememberEmail') || '');
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState(() => localStorage.getItem('rememberEmail') || '');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('rememberEmail'));
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [sessionChecked, setSessionChecked] = useState(false);
 
-  // 🔐 Auto logout after 10 min of inactivity
+  useEffect(() => {
+    console.log('✅ Login component loaded');
+    let mounted = true;
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: { user }, error } = await supabase.auth.getUser();
+          if (!error && user && mounted) {
+            navigate('/landingpage');
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Session check failed:', err.message);
+      }
+      if (mounted) setSessionChecked(true);
+    };
+    checkSession();
+    return () => { mounted = false; };
+  }, [navigate]);
+
   useEffect(() => {
     let timeout;
     const resetTimer = () => {
@@ -21,13 +44,11 @@ const Login = () => {
         alert('🔒 Session expired due to inactivity.');
         await supabase.auth.signOut();
         navigate('/login');
-      }, 10 * 60 * 1000); // 10 minutes
+      }, 10 * 60 * 1000);
     };
-
     window.addEventListener('mousemove', resetTimer);
     window.addEventListener('keydown', resetTimer);
     resetTimer();
-
     return () => {
       clearTimeout(timeout);
       window.removeEventListener('mousemove', resetTimer);
@@ -41,51 +62,50 @@ const Login = () => {
     setMessage('');
     setLoading(true);
 
-    // 🔁 Remember email
-    rememberMe
-      ? localStorage.setItem('rememberEmail', email)
-      : localStorage.removeItem('rememberEmail');
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (rememberMe) {
+      localStorage.setItem('rememberEmail', trimmedEmail);
+    } else {
+      localStorage.removeItem('rememberEmail');
+    }
 
     try {
-      // 🔐 Supabase Auth
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password: trimmedPassword
+      });
+
       if (authError) return setError('❌ Invalid login credentials.');
 
-      // ✅ Get user data
       const { data: userData, error: userError } = await supabase
         .from('user_management')
         .select('status, force_reset_password, password_updated_at')
-        .eq('email', email)
+        .eq('email', trimmedEmail)
         .single();
 
       if (userError || !userData) {
-        setError('❌ User data fetch failed.');
         await supabase.auth.signOut();
-        return;
+        return setError('❌ Failed to fetch user profile.');
       }
 
       if (userData.status !== 'Active') {
-        setError('⛔ Your account is inactive. Contact admin.');
         await supabase.auth.signOut();
-        return;
+        return setError('⛔ Your account is inactive. Contact admin.');
       }
 
-      if (userData.force_reset_password) {
-        navigate('/password-management');
-        return;
-      }
+      if (userData.force_reset_password) return navigate('/password-management');
 
-      // ⏳ Password expiry check
       const lastUpdated = new Date(userData.password_updated_at);
       const now = new Date();
-      const diffDays = Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24));
+      const daysSinceUpdate = Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24));
 
-      if (diffDays >= 90) {
-        alert('🔒 Password expired. Please reset it.');
-        navigate('/password-management');
-        return;
-      } else if (diffDays >= 75) {
-        alert(`⚠️ Password will expire in ${90 - diffDays} day(s). Consider updating.`);
+      if (daysSinceUpdate >= 90) {
+        alert('🔒 Your password has expired. Please reset it.');
+        return navigate('/password-management');
+      } else if (daysSinceUpdate >= 75) {
+        alert(`⚠️ Password expires in ${90 - daysSinceUpdate} day(s). Please update it soon.`);
       }
 
       setMessage('✅ Login successful. Redirecting...');
@@ -93,15 +113,27 @@ const Login = () => {
 
     } catch (err) {
       console.error('Login Exception:', err);
-      setError('❌ Unexpected login error. Try again.');
+      setError('❌ Unexpected login error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  if (!sessionChecked) {
+    return (
+      <div className="flex justify-center items-center h-screen text-gray-500 text-lg">
+        🔄 Checking session...
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form onSubmit={handleLogin} className="bg-white p-6 rounded shadow-md w-80">
+        <h1 className="text-center text-2xl font-bold mb-6 text-blue-600 animate-logo-fade">
+          DigitizerX
+        </h1>
+
         <h2 className="text-xl font-bold mb-4">Login</h2>
 
         {error && <p className="text-red-600 mb-2">{error}</p>}
@@ -126,7 +158,7 @@ const Login = () => {
             required
           />
           <span
-            onClick={() => setShowPassword(!showPassword)}
+            onClick={() => setShowPassword((prev) => !prev)}
             className="absolute right-2 top-2 cursor-pointer text-gray-600 text-sm"
           >
             {showPassword ? '🙈' : '👁️'}

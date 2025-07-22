@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../utils/supabaseClient';
 
 const Signup = () => {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -22,6 +23,7 @@ const Signup = () => {
     }
 
     setLoading(true);
+
     try {
       const { error } = await supabase.auth.signUp({ email, password });
 
@@ -32,6 +34,7 @@ const Signup = () => {
         setTimeout(() => navigate('/login'), 3000);
       }
     } catch (err) {
+      console.error('Signup Error:', err);
       setErrorMsg('❌ Unexpected error during signup.');
     } finally {
       setLoading(false);
@@ -84,8 +87,8 @@ const Signup = () => {
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
           disabled={loading}
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
         >
           {loading ? 'Signing up...' : 'Sign Up'}
         </button>

@@ -1,5 +1,4 @@
-// Logout.jsx
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
@@ -8,16 +7,24 @@ const Logout = () => {
 
   useEffect(() => {
     const signOut = async () => {
-      // Clear localStorage/sessionStorage if used
-      localStorage.removeItem('rememberEmail');
-      await supabase.auth.signOut();
-      navigate('/login');
+      try {
+        // 🧹 Clean up storage/session
+        localStorage.removeItem('rememberEmail');
+
+        // 🔒 Sign out from Supabase
+        const { error } = await supabase.auth.signOut();
+        if (error) console.error('❌ Error signing out:', error.message);
+      } catch (err) {
+        console.error('⚠️ Unexpected error during logout:', err);
+      } finally {
+        navigate('/login');
+      }
     };
 
     signOut();
   }, [navigate]);
 
-  return null; // No UI required for logout
+  return null; // 🚪 No UI for logout page
 };
 
 export default Logout;
