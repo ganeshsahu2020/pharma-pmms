@@ -54,7 +54,7 @@ export default function LandingPage() {
       const first = groupedModules[expandedModule][0];
       setSelectedSubmodule(first);
     }
-  }, [expandedModule]);
+  }, [expandedModule, groupedModules]);
 
   const renderSubmodule = () => {
     const key = selectedSubmodule?.toLowerCase().replace(/\s+/g, '');

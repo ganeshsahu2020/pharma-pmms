@@ -1,29 +1,33 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSession = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('❌ Error fetching session:', error.message);
-          setUser(null);
+        console.log('📦 Session response:', data);
+
+        if (error || !data?.session?.user) {
+          console.warn('⚠️ No valid session. Redirecting to /login...');
+          navigate('/login');
         } else {
-          setUser(data?.session?.user || null);
+          setUser(data.session.user);
         }
       } catch (err) {
-        console.error('⚠️ Unexpected session fetch error:', err);
+        console.error('🔥 Session fetch error:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchSession();
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -38,7 +42,7 @@ const Dashboard = () => {
             <p><strong>🆔 User ID:</strong> {user.id}</p>
           </div>
         ) : (
-          <p className="text-red-600">⚠️ No user session found.</p>
+          <p className="text-red-600">❌ No user found — something went wrong.</p>
         )}
 
         <div className="mt-6 text-gray-700 leading-relaxed">

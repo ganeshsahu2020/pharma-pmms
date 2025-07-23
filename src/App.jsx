@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom'; // ❌ Removed BrowserRouter
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { supabase } from './utils/supabaseClient';
 
 // 🔓 Public Pages
 import Login from './components/Login';
-import Signup from './components/Signup';
 import PasswordReset from './components/PasswordReset';
 import PasswordRedirect from './components/PasswordRedirect';
 import PasswordManagement from './components/PasswordManagement';
@@ -41,29 +40,30 @@ const App = () => {
   }, []);
 
   return (
-    <AuthProvider>
-      <Routes>
-        {/* 🔓 Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/password-reset" element={<PasswordReset />} />
-        <Route path="/reset" element={<PasswordRedirect />} />
-        <Route path="/password-management" element={<PasswordManagement />} />
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* 🔓 Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/password-reset" element={<PasswordReset />} />
+          <Route path="/reset" element={<PasswordRedirect />} />
+          <Route path="/password-management" element={<PasswordManagement />} />
 
-        {/* 🔐 Protected Routes */}
-        <Route path="/landingpage" element={<AuthGuard><LandingPage /></AuthGuard>} />
-        <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-        <Route path="/logout" element={<AuthGuard><Logout /></AuthGuard>} />
-        <Route path="/user-management" element={<AuthGuard><UserManagement currentUserRole="Super Admin" /></AuthGuard>} />
+          {/* 🔐 Protected Routes */}
+          <Route path="/landingpage" element={<AuthGuard><LandingPage /></AuthGuard>} />
+          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+          <Route path="/logout" element={<AuthGuard><Logout /></AuthGuard>} />
+          <Route path="/user-management" element={<AuthGuard><UserManagement currentUserRole="Super Admin" /></AuthGuard>} />
 
-        {/* 🧪 Test */}
-        <Route path="/test" element={<div className="p-8 text-green-600 text-2xl">✅ Test route works!</div>} />
+          {/* 🧪 Test Route */}
+          <Route path="/test" element={<div className="p-8 text-green-600 text-2xl">✅ Test route works!</div>} />
 
-        {/* 🔁 Redirects */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </AuthProvider>
+          {/* 🔁 Default Redirects */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 };
 

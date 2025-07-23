@@ -1,7 +1,6 @@
 ﻿import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
+import App from './App.jsx';
 import './index.css';
 
 console.log('✅ main.jsx loaded');
@@ -9,14 +8,11 @@ console.log('✅ main.jsx loaded');
 const rootElement = document.getElementById('root');
 
 if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
+  ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <App />
     </React.StrictMode>
   );
 } else {
-  console.error('❌ Root element not found. Ensure <div id="root"></div> is present in public/index.html');
+  console.error('❌ Root element not found. Ensure <div id="root"></div> is present in index.html');
 }
